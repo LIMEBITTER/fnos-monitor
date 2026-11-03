@@ -26,5 +26,11 @@ jobs:
       - name: 类型检查与构建
         run: pnpm build
 
+      - name: 脱敏规则自测
+        run: node scripts/test-public-view.mjs
+
+      - name: 邮件客户端自测（假 SMTP）
+        run: node scripts/test-mailer.mjs
+
       - name: 冒烟测试（API / SSE / 静态页）
         run: node scripts/smoke.mjs

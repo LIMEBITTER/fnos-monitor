@@ -82,6 +82,10 @@ export class Store {
     return this.data.incidents.find((i) => i.serviceId === serviceId && i.state === "open") ?? null;
   }
 
+  openIncidents() {
+    return this.data.incidents.filter((i) => i.state === "open");
+  }
+
   /** 记录一次检查结果，返回是否新建/关闭了事故（用于日志）。 */
   record(serviceId, result, at = Date.now()) {
     const svc = this.ensureService(serviceId);

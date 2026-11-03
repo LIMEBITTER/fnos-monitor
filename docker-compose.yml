@@ -1,7 +1,7 @@
 services:
   fnos-monitor:
     build: .
-    image: fnos-monitor:0.1.0
+    image: fnos-monitor:0.2.0
     container_name: fnos-monitor
     restart: unless-stopped
     # 监控目标里包含只监听 127.0.0.1 的服务（DSH、OneBot、mihomo、Lucky），
@@ -11,6 +11,10 @@ services:
     volumes:
       - ./config:/app/config:ro
       - ./data:/data
+    # 可选：把 SMTP 授权码等敏感值放在 .env（已 gitignore），不要写进本文件
+    env_file:
+      - path: .env
+        required: false
     environment:
       TZ: Asia/Shanghai
       PORT: "8787"
@@ -19,3 +23,15 @@ services:
       # 公网暴露时建议启用（两者必须同时设置）
       # STATUS_USER: admin
       # STATUS_PASSWORD: change-me
+      # 默认公网脱敏；内网自用想直接看到探测目标时设 true
+      # EXPOSE_INTERNAL: "true"
+      # 邮件告警（QQ 邮箱：smtp.qq.com:465，密码填授权码）
+      # ALERT_SMTP_HOST: smtp.qq.com
+      # ALERT_SMTP_PORT: "465"
+      # ALERT_SMTP_SECURE: "true"
+      # ALERT_SMTP_USER: you@qq.com
+      # ALERT_SMTP_PASS: 授权码
+      # ALERT_FROM: you@qq.com
+      # ALERT_TO: you@qq.com
+      # ALERT_REPEAT_MINUTES: "180"
+      # ALERT_URL: https://status.example.com

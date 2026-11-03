@@ -119,6 +119,8 @@ export function loadRuntime() {
     host: String(process.env.HOST ?? "0.0.0.0"),
     dataDir: path.resolve(process.env.DATA_DIR ?? path.join(ROOT, "data")),
     distDir: path.join(ROOT, "dist"),
+    /** 默认公网脱敏；显式设置后恢复完整信息（自用内网部署时方便） */
+    exposeInternal: /^(1|true|yes|on)$/i.test(process.env.EXPOSE_INTERNAL ?? ""),
     auth:
       process.env.STATUS_USER && process.env.STATUS_PASSWORD
         ? { user: process.env.STATUS_USER, password: process.env.STATUS_PASSWORD }

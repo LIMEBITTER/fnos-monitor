@@ -23,7 +23,8 @@ export interface ServiceStatus {
   group: string;
   description: string;
   type: "http" | "tcp";
-  target: string;
+  /** 公网视图里为 null（不暴露内网地址） */
+  target: string | null;
   state: ServiceState;
   since: number | null;
   lastCheckAt: number | null;
@@ -78,9 +79,11 @@ export interface StatusPayload {
   meta: {
     intervalSeconds: number;
     historyDays: number;
+    /** 公网视图下这些字段为空/零 */
     version: string;
-    startedAt: number;
+    startedAt: number | null;
     configFile: string;
     isExample: boolean;
+    publicView?: boolean;
   };
 }

@@ -4,10 +4,11 @@ interface Props {
   site: StatusPayload["site"];
   connected: boolean;
   theme: "dark" | "light";
+  publicView?: boolean;
   onToggleTheme: () => void;
 }
 
-export function Header({ site, connected, theme, onToggleTheme }: Props) {
+export function Header({ site, connected, theme, publicView = false, onToggleTheme }: Props) {
   return (
     <header className="topbar">
       <a className="brand" href="/" aria-label="回到首页">
@@ -29,6 +30,19 @@ export function Header({ site, connected, theme, onToggleTheme }: Props) {
       </a>
 
       <div className="topbar-right">
+        {publicView ? (
+          <span className="vision" title="公网视图：探测目标、错误详情与版本号已隐藏">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden="true">
+              <path
+                d="M7 10V8a5 5 0 0 1 10 0v2M6 10h12v9H6z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinejoin="round"
+              />
+            </svg>
+            已脱敏
+          </span>
+        ) : null}
         <span className={`live ${connected ? "is-live" : ""}`} title={connected ? "SSE 实时推送中" : "SSE 断开，改用轮询"}>
           <i aria-hidden="true" />
           {connected ? "实时" : "轮询"}

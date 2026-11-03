@@ -4,7 +4,7 @@
  */
 import { runCheck } from "./checks.js";
 
-export function createScheduler({ config, store, onUpdate, logger = console }) {
+export function createScheduler({ config, store, onUpdate, notify, logger = console }) {
   let timer = null;
   let stopped = false;
   let ticking = false;
@@ -36,13 +36,22 @@ export function createScheduler({ config, store, onUpdate, logger = console }) {
         const event = store.record(service.id, result, Date.now());
         if (event?.type === "opened") {
           logger.warn(`[incident] ${service.name} 异常：${event.incident.reason}`);
+          notify?.({ type: "opened", service, incident: event.incident });
         } else if (event?.type === "resolved") {
           logger.info(`[incident] ${service.name} 已恢复`);
+          notify?.({ type: "resolved", service, incident: event.incident });
         }
       }
 
       store.pruneIncidents(Date.now());
       store.save();
+
+      if (notify) {
+        for (const incident of store.openIncidents()) {
+          const service = config.services.find((s) => s.id === incident.serviceId);
+          if (service) notify({ type: "reminder", service, incident });
+        }
+      }
       lastRunAt = Date.now();
       onUpdate?.({ up, degraded, down, durationMs: Date.now() - startedAt });
     } catch (err) {

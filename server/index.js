@@ -9,12 +9,16 @@
  *   GET /events           → SSE，每次采集完成后推送一份新的 status
  *
  * 环境变量：PORT / HOST / DATA_DIR / CONFIG_DIR / STATUS_USER / STATUS_PASSWORD / TZ
+ *           EXPOSE_INTERNAL=true  公网视图下也返回内部地址（默认关闭）
+ *           ALERT_*               SMTP 邮件通知，见 server/alerts.js
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { createAlerter } from "./alerts.js";
 import { loadConfig, loadRuntime } from "./config.js";
+import { publicStatus } from "./public-view.js";
 import { createScheduler } from "./scheduler.js";
 import { Store } from "./store.js";
 
@@ -39,9 +43,25 @@ const MIME = {
 };
 
 const sseClients = new Set();
+const alerter = createAlerter({ siteName: config.site.name, timezone: config.site.timezone });
 
-function statusPayload() {
-  return store.buildStatus(config, runtime);
+function isAuthed(req) {
+  if (!runtime.auth) return false;
+  const header = req.headers.authorization ?? "";
+  const [scheme, encoded] = header.split(" ");
+  if (scheme !== "Basic" || !encoded) return false;
+  const [user, ...rest] = Buffer.from(encoded, "base64").toString("utf8").split(":");
+  return safeEqual(user, runtime.auth.user) && safeEqual(rest.join(":"), runtime.auth.password);
+}
+
+/** 公网默认脱敏：内部地址、错误详情、版本号只对登录用户或 EXPOSE_INTERNAL 可见。 */
+function wantsFullView(req) {
+  return runtime.exposeInternal || isAuthed(req);
+}
+
+function statusPayload(req) {
+  const status = store.buildStatus(config, runtime);
+  return wantsFullView(req) ? status : publicStatus(status);
 }
 
 function sendJson(res, code, body) {
@@ -56,15 +76,7 @@ function sendJson(res, code, body) {
 
 function checkAuth(req, res) {
   if (!runtime.auth) return true;
-  const header = req.headers.authorization ?? "";
-  const [scheme, encoded] = header.split(" ");
-  if (scheme === "Basic" && encoded) {
-    const [user, ...rest] = Buffer.from(encoded, "base64").toString("utf8").split(":");
-    const password = rest.join(":");
-    const okUser = safeEqual(user, runtime.auth.user);
-    const okPass = safeEqual(password, runtime.auth.password);
-    if (okUser && okPass) return true;
-  }
+  if (isAuthed(req)) return true;
   res.writeHead(401, { "www-authenticate": 'Basic realm="fnos-monitor", charset="UTF-8"' });
   res.end("需要登录");
   return false;
@@ -119,20 +131,30 @@ function handleSse(req, res) {
     "x-accel-buffering": "no",
   });
   res.write("retry: 5000\n\n");
-  res.write(`event: status\ndata: ${JSON.stringify(statusPayload())}\n\n`);
-  sseClients.add(res);
-  req.on("close", () => sseClients.delete(res));
+  res.write(`event: status\ndata: ${JSON.stringify(statusPayload(req))}\n\n`);
+  const client = { res, full: wantsFullView(req) };
+  sseClients.add(client);
+  req.on("close", () => sseClients.delete(client));
 }
 
 function broadcast() {
   if (!sseClients.size) return;
-  const payload = statusPayload();
-  const frame = `event: status\ndata: ${JSON.stringify(payload)}\n\n`;
-  for (const res of sseClients) {
+  const status = store.buildStatus(config, runtime);
+  let fullFrame = null;
+  let publicFrame = null;
+  for (const client of sseClients) {
+    let frame;
+    if (client.full) {
+      fullFrame ??= `event: status\ndata: ${JSON.stringify(status)}\n\n`;
+      frame = fullFrame;
+    } else {
+      publicFrame ??= `event: status\ndata: ${JSON.stringify(publicStatus(status))}\n\n`;
+      frame = publicFrame;
+    }
     try {
-      res.write(frame);
+      client.res.write(frame);
     } catch {
-      sseClients.delete(res);
+      sseClients.delete(client);
     }
   }
 }
@@ -140,6 +162,7 @@ function broadcast() {
 const scheduler = createScheduler({
   config,
   store,
+  notify: (event) => alerter.notify(event),
   onUpdate: (summary) => {
     broadcast();
     if (runtime.dev) {
@@ -160,14 +183,13 @@ const server = http.createServer(async (req, res) => {
       uptimeSeconds: Math.round(process.uptime()),
       services: config.services.length,
       lastRunAt: scheduler.lastRunAt(),
-      version: runtime.version,
     });
   }
 
   if (!checkAuth(req, res)) return;
 
   if (url.pathname === "/api/status") {
-    return sendJson(res, 200, statusPayload());
+    return sendJson(res, 200, statusPayload(req));
   }
 
   if (url.pathname === "/events") {
@@ -192,7 +214,13 @@ server.listen(runtime.port, runtime.host, () => {
   console.log(`fnos-monitor v${runtime.version} 已启动：http://${runtime.host}:${runtime.port}`);
   console.log(`  监听：${where}｜配置：${config.file}${config.isExample ? "（示例配置，改 config/services.json）" : ""}`);
   console.log(`  数据：${path.join(runtime.dataDir, "state.json")}｜间隔：${config.checkIntervalSeconds}s｜历史：${config.historyDays} 天`);
+  console.log(
+    runtime.exposeInternal
+      ? "  视图：完整（EXPOSE_INTERNAL=true，内网地址对所有人可见）"
+      : "  视图：公网脱敏（隐藏探测目标与错误详情；登录用户或 EXPOSE_INTERNAL=true 可见完整信息）",
+  );
   if (runtime.auth) console.log("  已启用 Basic Auth");
+  console.log(`  ${alerter.describe()}`);
 });
 
 let shuttingDown = false;
@@ -206,7 +234,7 @@ function shutdown(signal) {
   } catch (err) {
     console.error("保存失败：", err);
   }
-  for (const res of sseClients) res.end();
+  for (const client of sseClients) client.res.end();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 3000).unref();
 }

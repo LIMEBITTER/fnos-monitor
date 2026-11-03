@@ -53,8 +53,10 @@ export function ServiceCard({ service, index }: Props) {
       <UptimeBars days={service.days} name={service.name} />
 
       <div className="card-foot">
-        <span className="card-target" title={service.target}>
-          {service.type === "tcp" ? "TCP" : "HTTP"} · {service.target}
+        <span className="card-target" title={service.target ?? "公网视图已隐藏"}>
+          {service.target
+            ? `${service.type === "tcp" ? "TCP" : "HTTP"} · ${service.target}`
+            : `${service.type === "tcp" ? "TCP" : "HTTP"} · 目标已隐藏`}
         </span>
         <span className="card-checked">检查于 {formatRelative(service.lastCheckAt)}</span>
       </div>

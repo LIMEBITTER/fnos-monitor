@@ -58,6 +58,7 @@ function check(name, condition, detail = "") {
 try {
   const health = await waitForServer();
   check("GET /api/health", health.ok === true, JSON.stringify(health));
+  check("GET /api/health 不暴露版本号", !("version" in health));
 
   const statusRes = await fetch(`${base}/api/status`);
   check("GET /api/status 状态码", statusRes.status === 200);
@@ -67,8 +68,11 @@ try {
   check("status.overall.state 合法", ["up", "degraded", "down", "unknown"].includes(status.overall?.state));
   check(
     "status.meta 字段齐全",
-    Boolean(status.meta?.version && status.meta?.intervalSeconds && status.meta?.configFile),
+    Boolean(status.meta?.intervalSeconds && status.meta?.historyDays && status.meta?.publicView),
   );
+  check("默认公网视图：target 被隐藏", status.services.every((s) => s.target === null));
+  check("默认公网视图：输出里没有内网地址", !JSON.stringify(status).includes("127.0.0.1"));
+  check("默认公网视图：不暴露版本号", !JSON.stringify(status.meta).includes('"version":"0'));
   const svc = status.services[0];
   check("服务包含 90 天日聚合", Array.isArray(svc?.days) && svc.days.length === status.meta.historyDays);
   check("服务包含 checks 时间线", Array.isArray(svc?.checks));

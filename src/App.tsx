@@ -28,7 +28,13 @@ export default function App() {
         <BootState error={error} />
       ) : (
         <>
-          <Header site={status.site} connected={connected} theme={theme} onToggleTheme={toggleTheme} />
+          <Header
+            site={status.site}
+            connected={connected}
+            theme={theme}
+            publicView={status.meta.publicView}
+            onToggleTheme={toggleTheme}
+          />
 
           <main className="page">
             <Hero status={status} />
