@@ -40,7 +40,7 @@ import { Store } from "./store.js";
 
 const runtime = loadRuntime();
 const config = loadConfig();
-const settings = loadSettings(runtime.dataDir);
+let settings = loadSettings(runtime.dataDir);
 applyToConfig(settings, config);
 if (settings.dirty) {
   try {
@@ -76,6 +76,43 @@ let alerter = createAlerter({
   timezone: config.site.timezone,
   overrides: settings.alerts,
 });
+
+let settingsMtime = 0;
+try {
+  settingsMtime = fs.statSync(settings.file).mtimeMs;
+} catch {
+  /* settings.json 尚未生成 */
+}
+
+/**
+ * 设置文件被外部改动（例如在容器里跑 set-admin）后热加载一次，
+ * 免得初始化完管理员还要手动重启服务。
+ */
+function syncSettingsFromDisk() {
+  let mtime;
+  try {
+    mtime = fs.statSync(settings.file).mtimeMs;
+  } catch {
+    return;
+  }
+  if (mtime === settingsMtime) return;
+  settingsMtime = mtime;
+  try {
+    const fresh = loadSettings(runtime.dataDir);
+    fresh.sessionSecret ||= settings.sessionSecret;
+    settings = fresh;
+    applyToConfig(settings, config);
+    alerter = createAlerter({
+      siteName: config.site.name,
+      timezone: config.site.timezone,
+      overrides: settings.alerts,
+    });
+    scheduler.setIntervalSeconds(config.checkIntervalSeconds);
+    console.log("[settings] 检测到 settings.json 变化，已重新加载");
+  } catch (err) {
+    console.warn(`[settings] 重新加载失败：${err.message}`);
+  }
+}
 
 function safeEqual(a = "", b = "") {
   const ba = Buffer.from(String(a));
@@ -261,6 +298,11 @@ function settingsPayload() {
 function applySettingsPatch(patch) {
   Object.assign(settings, patch);
   saveSettings(settings);
+  try {
+    settingsMtime = fs.statSync(settings.file).mtimeMs;
+  } catch {
+    /* 忽略：下一次请求会按新 mtime 处理 */
+  }
   applyToConfig(settings, config);
   scheduler.setIntervalSeconds(config.checkIntervalSeconds);
   alerter = createAlerter({
@@ -284,6 +326,7 @@ function rateLimited(ip) {
 }
 
 async function handleApi(req, res, url) {
+  syncSettingsFromDisk();
   const { pathname } = url;
   const method = req.method ?? "GET";
 
