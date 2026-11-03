@@ -2,7 +2,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 RUN npm install -g pnpm@11.28.5
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY tsconfig.json vite.config.ts index.html ./
 COPY src ./src
