@@ -32,5 +32,8 @@ jobs:
       - name: 邮件客户端自测（假 SMTP）
         run: node scripts/test-mailer.mjs
 
+      - name: 告警触发自测（假 SMTP）
+        run: node scripts/test-alerts.mjs
+
       - name: 冒烟测试（API / SSE / 静态页）
         run: node scripts/smoke.mjs

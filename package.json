@@ -18,7 +18,8 @@
     "smoke": "node scripts/smoke.mjs",
     "test:public": "node scripts/test-public-view.mjs",
     "test:mailer": "node scripts/test-mailer.mjs",
-    "test": "node scripts/test-public-view.mjs && node scripts/test-mailer.mjs && node scripts/smoke.mjs"
+    "test:alerts": "node scripts/test-alerts.mjs",
+    "test": "node scripts/test-public-view.mjs && node scripts/test-mailer.mjs && node scripts/test-alerts.mjs && node scripts/smoke.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
