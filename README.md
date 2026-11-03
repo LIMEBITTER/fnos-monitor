@@ -183,6 +183,14 @@ pnpm start
 
 日志里的 `[alert] 已发送邮件：…` / `[alert] 邮件发送失败：…` 可以直接确认投递结果；发送失败只记日志，不影响后续探测。
 
+配好后先发一封测试邮件，确认凭据、端口与 TLS 都没问题：
+
+```bash
+node scripts/send-test-mail.mjs     # 或 pnpm mail:test
+```
+
+容器里执行则用 `docker compose exec fnos-monitor node scripts/send-test-mail.mjs`。
+
 ## 部署
 
 ### systemd（fnOS 这类 Debian 系系统）

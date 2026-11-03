@@ -19,6 +19,7 @@
     "test:public": "node scripts/test-public-view.mjs",
     "test:mailer": "node scripts/test-mailer.mjs",
     "test:alerts": "node scripts/test-alerts.mjs",
+    "mail:test": "node scripts/send-test-mail.mjs",
     "test": "node scripts/test-public-view.mjs && node scripts/test-mailer.mjs && node scripts/test-alerts.mjs && node scripts/smoke.mjs"
   },
   "dependencies": {
