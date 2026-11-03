@@ -196,6 +196,8 @@ node scripts/send-test-mail.mjs     # 或 pnpm mail:test
 
 页头右上角的齿轮是设置入口（也可以直接访问 `/settings`）。第一次使用需要先在服务器上初始化管理员：
 
+![网页设置](docs/screenshots/settings.png)
+
 ```bash
 node scripts/set-admin.mjs                        # 生成随机密码并打印
 node scripts/set-admin.mjs --user baiyu --password '你的密码'
