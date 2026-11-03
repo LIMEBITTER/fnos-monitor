@@ -17,14 +17,15 @@ ENV NODE_ENV=production \
     DATA_DIR=/data \
     TZ=Asia/Shanghai
 
-COPY package.json ./
-COPY server ./server
-COPY scripts ./scripts
-COPY config ./config
-COPY --from=build /app/dist ./dist
+COPY --chown=node:node package.json ./
+COPY --chown=node:node server ./server
+COPY --chown=node:node scripts ./scripts
+COPY --chown=node:node config ./config
+COPY --from=build --chown=node:node /app/dist ./dist
 
-RUN mkdir -p /data
+RUN mkdir -p /data && chown node:node /data
 VOLUME ["/data"]
+USER node
 EXPOSE 8787
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
