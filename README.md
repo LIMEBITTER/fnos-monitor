@@ -154,7 +154,9 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-`docker-compose.yml` 把 `config/` 只读挂进容器、`data/` 挂到 `/data`；镜像运行时不带 `node_modules`，只依赖 Node 标准库。健康检查走 `GET /api/health`。
+`docker-compose.yml` 使用 `network_mode: host`：监控目标里有 DSH、OneBot、mihomo、Lucky 这类只监听 `127.0.0.1` 的服务，桥接网络里的容器看不到它们。共享宿主网络后，配置里的 `127.0.0.1` 就是 NAS 本机。容器只读挂载 `config/`、把 `data/` 挂到 `/data`；运行时不带 `node_modules`，只依赖 Node 标准库。健康检查走 `GET /api/health`。
+
+打开 `http://<NAS 的局域网 IP>:8787`。只希望经反代访问时，把 compose 里的 `HOST` 改成 `127.0.0.1`，由 Lucky / Nginx 代理 `127.0.0.1:8787`。
 
 ### 放在 Lucky / Nginx 后面
 
