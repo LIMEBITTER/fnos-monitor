@@ -12,7 +12,7 @@
 | 权限 | 普通用户 `baiyu` 在 `docker` 组，`sudo` 需要密码 |
 | 代码目录 | `/home/baiyu/apps/fnos-monitor`（`git clone` 的仓库） |
 | 数据目录 | `./data/state.json`（挂载进容器 `/data`） |
-| 访问地址 | `http://192.168.31.217:8787`（局域网） |
+| 访问地址 | `http://192.168.31.217:8787`（局域网）、`https://status.limebitter.online:57921`（公网，仅 IPv6） |
 
 因为拿不到 root，没有用 `deploy/fnos-monitor.service`，而是用 Docker Compose 跑，`restart: unless-stopped` 负责开机自启。
 
@@ -66,7 +66,34 @@ docker compose up -d --build
 
 `data/` 是 bind mount，重建容器不会丢历史。
 
+## Lucky 反向代理（公网访问）
+
+面板 `http://192.168.31.217:16601/luckyeric/`（Lucky 3.5.0），主规则 `nas :57921` 已经是 IPv6 + HTTPS。在这条规则下新增子规则：
+
+| 字段 | 值 |
+| --- | --- |
+| 子规则名称 | `status` |
+| 前端地址 | `status.limebitter.online` |
+| 后端地址 | `http://127.0.0.1:8787` |
+
+证书复用主规则的 `*.limebitter.online`（ZeroSSL，2026-10-08 至 2027-01-06），新子域不需要重新申请。
+
+DNS 由 Lucky「动态域名」里的腾讯云任务维护：在该任务下新增一条 AAAA，记录名 `status.limebitter.online`、值 `240e:3a4:4af1:66c0::fcc`、备注 `status`，Lucky 会按任务里的 IPv6 来源（HTTP/STUN/DNS）自动同步。
+
+验证时可以在 NAS 上绕过公网 DNS 直连本机：
+
+```bash
+curl -sk --resolve 'status.limebitter.online:57921:[::1]' \
+  https://status.limebitter.online:57921/api/health
+curl -sk --resolve 'status.limebitter.online:57921:[::1]' \
+  -o /dev/null -w '%{http_code}\n' https://status.limebitter.online:57921/
+```
+
+外网访问注意：
+
+- 这台机器只有 IPv6 公网地址，`status.limebitter.online` 也只解析出 AAAA；纯 IPv4 网络打不开，与 `dsh.limebitter.online` 的情况一致。
+- 公网页面会显示服务名和探测目标（如 `http://127.0.0.1:3080`）。不想暴露就在 compose 里设置 `STATUS_USER` / `STATUS_PASSWORD`，或把 `HOST` 改回 `127.0.0.1` 只让反代访问。
+
 ## 还没做的
 
-- **Lucky 反代**：`status.limebitter.online` / `monitor.limebitter.online` 目前没有 DNS 记录；Lucky 的配置目录 `/vol1/@appdata/Lucky/data` 是 `root` 700，普通用户无法改规则。需要先在 DNS 里加一条指向本机 IPv6（`240e:3a4:4af1:66c0::fcc`）的记录，再在 Lucky 面板加一条 Web 服务规则代理到 `127.0.0.1:8787`，并在 Lucky 里为该域名申请证书。
-- 公网暴露前建议在 compose 里设置 `STATUS_USER` / `STATUS_PASSWORD`，或把 `HOST` 改回 `127.0.0.1` 只让反代访问。
+- 通知渠道（FM-005）、多探针聚合（FM-006）、历史导出（FM-007），见 `docs/ISSUES.md`。

@@ -6,6 +6,8 @@
 
 ![CI](https://github.com/LIMEBITTER/fnos-monitor/actions/workflows/ci.yml/badge.svg)
 
+线上实例（fnOS 实机，仅 IPv6）：<https://status.limebitter.online:57921>
+
 | 深色（默认） | 浅色 |
 | --- | --- |
 | ![深色模式](docs/screenshots/dark.png) | ![浅色模式](docs/screenshots/light.png) |
@@ -162,6 +164,8 @@ docker compose logs -f
 
 - Docker 发布端口时如果绑定了局域网 IP（fnOS 的容器端口映射就是这样），即使容器用 host 网络，探 `127.0.0.1` 也会被拒；配置里要写 NAS 的局域网 IP，例如 `http://192.168.31.217:5099/`。
 - 只监听 IPv6 的端口（Lucky 的 TLS 入口常见 `[::]:57921`）要写 `"host": "::1"`，`tcp` 类型支持 IPv6 字面量。
+
+这台 fnOS 上的实际部署、Lucky 子规则与 DNS 记录见 [`docs/DEPLOY-FNOS.md`](docs/DEPLOY-FNOS.md)。
 
 ### 放在 Lucky / Nginx 后面
 
