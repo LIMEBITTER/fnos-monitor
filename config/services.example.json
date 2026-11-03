@@ -1,0 +1,82 @@
+{
+  "site": {
+    "name": "fnOS 关键业务",
+    "description": "DSH、SnowLuma、OneBot、mihomo 等自托管服务的可用性",
+    "timezone": "Asia/Shanghai"
+  },
+  "checkIntervalSeconds": 60,
+  "historyDays": 90,
+  "services": [
+    {
+      "id": "dsh-web",
+      "name": "DeepSeek Harness",
+      "group": "核心",
+      "description": "DSH Web GUI（仅监听回环，经 Lucky 反代对外）",
+      "type": "http",
+      "url": "http://127.0.0.1:3080/",
+      "expectStatus": [200, 302, 401],
+      "slowMs": 1500
+    },
+    {
+      "id": "snowluma",
+      "name": "SnowLuma 面板",
+      "group": "核心",
+      "description": "docker compose 部署的 WebUI",
+      "type": "http",
+      "url": "http://127.0.0.1:5099/",
+      "expectStatus": [200, 302, 401],
+      "slowMs": 2000
+    },
+    {
+      "id": "onebot-http",
+      "name": "OneBot HTTP",
+      "group": "QQ",
+      "description": "QQ 桥接的 HTTP 上报端口",
+      "type": "tcp",
+      "host": "127.0.0.1",
+      "port": 3000
+    },
+    {
+      "id": "onebot-ws",
+      "name": "OneBot WebSocket",
+      "group": "QQ",
+      "type": "tcp",
+      "host": "127.0.0.1",
+      "port": 3001
+    },
+    {
+      "id": "mihomo-api",
+      "name": "mihomo 控制 API",
+      "group": "网络",
+      "description": "GET /version 作为存活探针（不读取订阅与密钥）",
+      "type": "http",
+      "url": "http://127.0.0.1:9090/version",
+      "expectStatus": [200]
+    },
+    {
+      "id": "lucky-panel",
+      "name": "Lucky 面板",
+      "group": "入口",
+      "type": "http",
+      "url": "http://127.0.0.1:16601/luckyeric",
+      "expectStatus": [200, 302, 401]
+    },
+    {
+      "id": "lucky-tls",
+      "name": "Lucky TLS 入口",
+      "group": "入口",
+      "description": "公网反代入口的 TCP 可达性",
+      "type": "tcp",
+      "host": "127.0.0.1",
+      "port": 57921
+    },
+    {
+      "id": "novnc",
+      "name": "noVNC 桌面",
+      "group": "入口",
+      "type": "http",
+      "url": "http://127.0.0.1:6081/",
+      "expectStatus": [200, 302]
+    }
+  ]
+}

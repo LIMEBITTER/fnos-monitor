@@ -1,0 +1,20 @@
+# 依赖与构建产物
+node_modules/
+dist/
+
+# 运行时数据：检查记录、日聚合、事故（不要提交，迁移时单独拷贝）
+data/
+
+# 真实监控配置（含内网地址/凭据），只提交 services.example.json
+config/services.json
+
+# 本地日志与临时文件
+*.log
+.DS_Store
+Thumbs.db
+.env
+.env.local
+
+# 本地演示/截图用的假数据
+.demo/
+*.tsbuildinfo

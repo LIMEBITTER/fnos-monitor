@@ -1,0 +1,31 @@
+{
+  "name": "fnos-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "fnOS 关键业务状态页：自托管、零运行时依赖的可用性监控与事故时间线",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "node server/index.js --dev",
+    "build": "tsc -b && vite build",
+    "start": "node server/index.js",
+    "preview": "vite preview",
+    "self-check": "node scripts/self-check.mjs",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}
