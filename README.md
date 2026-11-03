@@ -24,8 +24,10 @@
 - **实时更新**：SSE 推送，断线自动退回 15 秒轮询；页头有「实时 / 轮询」指示。
 - **界面**：深色 / 浅色切换（记住选择）、极光背景、入场与柱状动画、响应式；尊重 `prefers-reduced-motion`。
 - **可选 Basic Auth**：同时设置 `STATUS_USER` 与 `STATUS_PASSWORD` 才启用。
+- **默认公网脱敏**：页面不输出探测目标、错误详情、版本号与配置路径，事故原因里的 IP / 端口会替换成 `[内部地址]`；登录用户或 `EXPOSE_INTERNAL=true` 可见完整信息。
+- **邮件告警**：服务异常 / 恢复 / 长时间未恢复时发信；纯环境变量配置，零依赖 SMTP 客户端，未配置时静默禁用。
 - **易迁移**：无数据库、无原生模块、无外部 CDN；`node:http` 直接托管前端，运行时零 npm 依赖。
-- **自带体检**：`pnpm self-check` 立即探一轮并打印结果；`pnpm smoke` 无浏览器验证 API / SSE / 静态页。
+- **自带体检**：`pnpm self-check` 立即探一轮并打印结果；`pnpm test` 跑脱敏、邮件与冒烟测试。
 
 ## 快速开始
 
@@ -128,7 +130,58 @@ pnpm self-check
 | `DATA_DIR` | `./data` | `state.json` 所在目录 |
 | `CONFIG_DIR` | `./config` | `services.json` 所在目录 |
 | `STATUS_USER` / `STATUS_PASSWORD` | 空 | 同时设置才启用 Basic Auth |
+| `EXPOSE_INTERNAL` | 空 | `true` = 不对公网脱敏，输出完整探测目标与错误详情 |
+| `ALERT_SMTP_HOST` … `ALERT_URL` | 空 | 邮件告警，见下节；缺少 `ALERT_SMTP_HOST` 或 `ALERT_TO` 时自动禁用 |
 | `TZ` | 系统 | 例如 `Asia/Shanghai`，影响按日聚合的边界 |
+
+### 公网视图与脱敏
+
+状态页默认按「公网可见」输出：
+
+- `services[].target` 置为 `null`，卡片只显示协议类型；
+- 检查明细里的状态码与错误原文清空，错误文本中的 IP / 端口 / URL 替换为 `[内部地址]`；
+- `meta` 里不含版本号、启动时间、配置文件名；页头显示「已脱敏」；
+- `/api/health` 只返回 `ok`、服务数、最近探测时间。
+
+需要完整信息时（内网自用、排障）：
+
+```bash
+EXPOSE_INTERNAL=true pnpm start   # 所有人可见完整视图
+```
+
+或者启用 Basic Auth 后登录访问——登录用户始终看完整视图，未登录访客看脱敏视图。
+
+### 邮件告警
+
+服务进入「变慢 / 不可用」时发一封 `[异常]`，恢复时发 `[恢复]`；设置 `ALERT_REPEAT_MINUTES` 后，每小时/每 N 分钟再发一次 `[仍未恢复]`。
+
+QQ 邮箱示例（`ALERT_SMTP_PASS` 填邮箱设置里生成的**授权码**，不是登录密码）：
+
+```bash
+export ALERT_SMTP_HOST=smtp.qq.com
+export ALERT_SMTP_PORT=465
+export ALERT_SMTP_SECURE=true
+export ALERT_SMTP_USER=you@qq.com
+export ALERT_SMTP_PASS=授权码
+export ALERT_TO=you@qq.com
+export ALERT_REPEAT_MINUTES=180
+export ALERT_URL=https://status.example.com
+pnpm start
+```
+
+| 变量 | 默认 | 说明 |
+| --- | --- | --- |
+| `ALERT_SMTP_HOST` | 必填 | SMTP 服务器 |
+| `ALERT_SMTP_PORT` | `465` / `587` | `secure=true` 时默认 465，否则 587（自动尝试 STARTTLS） |
+| `ALERT_SMTP_SECURE` | `false` | `true` = 直接 TLS（465）；`false` = 明文连接后 STARTTLS |
+| `ALERT_SMTP_USER` / `ALERT_SMTP_PASS` | 空 | 登录凭据；支持 AUTH LOGIN 与 AUTH PLAIN |
+| `ALERT_FROM` | 同 `ALERT_SMTP_USER` | 发件人，可带显示名：`fnOS 监控 <you@qq.com>` |
+| `ALERT_TO` | 必填 | 收件人，多个用逗号分隔 |
+| `ALERT_REPEAT_MINUTES` | `0` | 持续异常时的重复提醒间隔；0 = 只发首封与恢复信 |
+| `ALERT_URL` | 空 | 邮件末尾附上的状态页地址 |
+| `ALERT_TZ` | `site.timezone` | 邮件正文里的时间时区 |
+
+日志里的 `[alert] 已发送邮件：…` / `[alert] 邮件发送失败：…` 可以直接确认投递结果；发送失败只记日志，不影响后续探测。
 
 ## 部署
 
@@ -187,8 +240,8 @@ docker compose logs -f
 
 | 路径 | 说明 |
 | --- | --- |
-| `GET /api/status` | 当前快照：`site` / `overall` / `services` / `incidents` / `calendar` / `meta` |
-| `GET /api/health` | 监控自身的健康检查；不鉴权，只含运行时长、服务数与版本 |
+| `GET /api/status` | 当前快照：`site` / `overall` / `services` / `incidents` / `calendar` / `meta`；默认脱敏，`EXPOSE_INTERNAL=true` 或登录后返回完整视图 |
+| `GET /api/health` | 监控自身的健康检查；不鉴权，只含运行时长、服务数与最近探测时间 |
 | `GET /events` | SSE；连接建立时先推当前快照，之后每次采集完成推一帧 `event: status` |
 
 ## 目录结构
@@ -199,7 +252,10 @@ server/
   config.js      配置加载、校验与归一化
   checks.js      http/tcp 探针与 degraded 判定
   store.js       状态持久化、日聚合、事故开关
-  scheduler.js   定时调度与并发控制
+  scheduler.js   定时调度、并发控制与告警触发
+  public-view.js 公网视图：剥离目标、错误详情与内部元信息
+  alerts.js      告警编排：开事故 / 恢复 / 重复提醒
+  mailer.js      零依赖 SMTP 客户端（LOGIN / PLAIN / STARTTLS）
 src/
   App.tsx        页面骨架
   components/    Header / Hero / ServiceCard / Incidents / Calendar / Footer
@@ -207,9 +263,11 @@ src/
 scripts/
   self-check.mjs 部署前连通性自检
   smoke.mjs      API / SSE / 静态页冒烟测试
+  test-public-view.mjs  脱敏规则自测
+  test-mailer.mjs       假 SMTP 服务器的发信自测
 config/          services.example.json（真实配置不进仓库）
 data/            state.json（运行后生成，不进仓库）
-docs/            ISSUES.md 与截图
+docs/            ISSUES.md、DEPLOY-FNOS.md 与截图
 deploy/          systemd unit 模板
 ```
 
@@ -225,7 +283,8 @@ deploy/          systemd unit 模板
 
 - 单实例：没有多探针聚合，页面展示的是「这台机器看到的可用性」。
 - 历史只保留按日聚合 + 最近 360 次明细，更早的明细会被裁剪。
-- 没有通知渠道（邮件 / Webhook / 推送），见 `docs/ISSUES.md` 的 FM-005。
+- 邮件告警只支持 SMTP 的 LOGIN / PLAIN 认证（含 STARTTLS 与 465 直连），不支持 OAuth2；Gmail 需用「应用专用密码」。
+- 进程重启后不会为「重启前就已存在」的事故补发邮件，恢复时仍会发送。
 - 探测间隔最小 10 秒，避免把小型 NAS 和反代打满。
 
 ## 问题与提交

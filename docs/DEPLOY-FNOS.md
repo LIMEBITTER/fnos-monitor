@@ -92,8 +92,33 @@ curl -sk --resolve 'status.limebitter.online:57921:[::1]' \
 外网访问注意：
 
 - 这台机器只有 IPv6 公网地址，`status.limebitter.online` 也只解析出 AAAA；纯 IPv4 网络打不开，与 `dsh.limebitter.online` 的情况一致。
-- 公网页面会显示服务名和探测目标（如 `http://127.0.0.1:3080`）。不想暴露就在 compose 里设置 `STATUS_USER` / `STATUS_PASSWORD`，或把 `HOST` 改回 `127.0.0.1` 只让反代访问。
+- 页面默认走公网视图：探测目标、状态码、错误详情、版本号都不下发，事故原因里的内网地址替换为 `[内部地址]`。本机排障想看完整信息时，在 compose 里设 `EXPOSE_INTERNAL=true`；或者启用 `STATUS_USER` / `STATUS_PASSWORD`，登录后自动看到完整视图。
+
+## 邮件告警
+
+在仓库目录新建 `.env`（已 gitignore），填 SMTP 信息后重建容器：
+
+```bash
+cd ~/apps/fnos-monitor
+cat > .env <<'EOF'
+ALERT_SMTP_HOST=smtp.qq.com
+ALERT_SMTP_PORT=465
+ALERT_SMTP_SECURE=true
+ALERT_SMTP_USER=you@qq.com
+ALERT_SMTP_PASS=授权码
+ALERT_FROM=you@qq.com
+ALERT_TO=you@qq.com
+ALERT_REPEAT_MINUTES=180
+ALERT_URL=https://status.limebitter.online:57921
+EOF
+docker compose up -d
+docker compose logs --tail=20 fnos-monitor | grep alert
+```
+
+启动日志里出现 `邮件通知已启用：smtp.qq.com:465 → …` 就说明读到了配置；服务异常时日志会打印 `[alert] 已发送邮件：[异常] …`。
+
+`docker-compose.yml` 里的 `env_file` 用了 `required: false`，所以没有 `.env` 也能正常启动，只是不会发信。
 
 ## 还没做的
 
-- 通知渠道（FM-005）、多探针聚合（FM-006）、历史导出（FM-007），见 `docs/ISSUES.md`。
+- 多探针聚合（FM-006）、历史导出（FM-007）、Webhook / 静默期（FM-009），见 `docs/ISSUES.md`。
