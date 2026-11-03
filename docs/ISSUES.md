@@ -10,11 +10,12 @@ GitHub Issues 尚未启用，问题先在这里编号管理。提交信息引用
 | FM-002 | 状态页前端：深色模式、动画、响应式 | done | Vite + React + TS；SSE 实时更新、90 天柱状图、日历、事故时间线、深浅色切换 |
 | FM-003 | 部署与迁移：Docker、systemd、README | done | Dockerfile / compose / systemd unit / 迁移清单；README 覆盖配置、API、设计取舍 |
 | FM-004 | 自检、冒烟与 CI | done | `scripts/self-check.mjs`、`scripts/smoke.mjs`、GitHub Actions 构建 + 冒烟 |
-| FM-005 | 邮件告警（SMTP） | done | `server/alerts.js` + 零依赖 `server/mailer.js`；开事故 / 恢复 / 定时重复提醒；全部走环境变量，未配置时静默禁用 |
+| FM-005 | 邮件告警（SMTP） | done | `server/alerts.js` + 零依赖 `server/mailer.js`；开事故 / 恢复 / 定时重复提醒；支持环境变量与设置页两种配置，未配置时静默禁用 |
 | FM-006 | 多探针聚合 | open | 允许从外部探针上报结果，服务端合并为「多地点可用性」；需要定义上报鉴权与冲突合并规则 |
 | FM-007 | 历史数据导出 | open | 导出 CSV / Prometheus 指标，便于接 Grafana；当前只有按日聚合，导出前需确认精度足够 |
 | FM-008 | 公网视图脱敏 | done | `server/public-view.js`：默认隐藏探测目标、状态码、错误原文、版本号与配置路径；`EXPOSE_INTERNAL=true` 或 Basic Auth 登录后可看完整视图 |
 | FM-009 | 通知渠道扩展与静默期 | open | Webhook / Bark / Server 酱；维护窗口与「同一服务抖动 N 次才发信」的抑制规则 |
+| FM-010 | 网页设置入口 | done | 页头齿轮 / `/settings`：登录后改邮件告警、站点信息、探测间隔与管理员密码；`server/settings.js`（scrypt + HMAC 会话）、`scripts/set-admin.mjs`；保存即生效，`settings.json` 优先于环境变量 |
 
 ## 约定
 

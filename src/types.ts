@@ -87,3 +87,30 @@ export interface StatusPayload {
     publicView?: boolean;
   };
 }
+
+export interface SessionInfo {
+  ok: boolean;
+  authenticated: boolean;
+  user: string | null;
+  source: "env" | "file" | null;
+  canManage: boolean;
+}
+
+export interface SettingsPayload {
+  ok: boolean;
+  admin: { user: string; source: "env" | "file" } | null;
+  alerts: {
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    hasPass: boolean;
+    from: string;
+    to: string[];
+    repeatMinutes: number;
+    url: string;
+  };
+  site: { name: string; description: string };
+  probe: { checkIntervalSeconds: number };
+  envManaged: { auth: boolean; smtp: boolean };
+}

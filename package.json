@@ -1,6 +1,6 @@
 {
   "name": "fnos-monitor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "fnOS 关键业务状态页：自托管、零运行时依赖的可用性监控与事故时间线",
@@ -19,8 +19,10 @@
     "test:public": "node scripts/test-public-view.mjs",
     "test:mailer": "node scripts/test-mailer.mjs",
     "test:alerts": "node scripts/test-alerts.mjs",
+    "test:settings": "node scripts/test-settings.mjs",
+    "admin:set": "node scripts/set-admin.mjs",
     "mail:test": "node scripts/send-test-mail.mjs",
-    "test": "node scripts/test-public-view.mjs && node scripts/test-mailer.mjs && node scripts/test-alerts.mjs && node scripts/smoke.mjs"
+    "test": "node scripts/test-public-view.mjs && node scripts/test-mailer.mjs && node scripts/test-alerts.mjs && node scripts/test-settings.mjs && node scripts/smoke.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

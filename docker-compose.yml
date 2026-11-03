@@ -1,7 +1,7 @@
 services:
   fnos-monitor:
     build: .
-    image: fnos-monitor:0.2.0
+    image: fnos-monitor:0.3.0
     container_name: fnos-monitor
     restart: unless-stopped
     # 监控目标里包含只监听 127.0.0.1 的服务（DSH、OneBot、mihomo、Lucky），

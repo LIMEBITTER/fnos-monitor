@@ -90,6 +90,21 @@ try {
   const html = await home.text();
   check("GET / 返回页面", home.status === 200 && html.includes('id="root"'));
 
+  const session = await (await fetch(`${base}/api/session`)).json();
+  check("GET /api/session 未登录且不可管理", session.authenticated === false && session.canManage === false);
+
+  const settingsRes = await fetch(`${base}/api/settings`);
+  const settingsBody = await settingsRes.json().catch(() => ({}));
+  check("GET /api/settings 无管理员返回 409", settingsRes.status === 409);
+  check("409 提示初始化管理员", settingsBody.needsAdmin === true);
+
+  const loginRes = await fetch(`${base}/api/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ user: "admin", password: "whatever" }),
+  });
+  check("POST /api/login 无管理员返回 409", loginRes.status === 409);
+
   console.log(failures ? `\n${failures} 项失败` : "\n全部通过");
 } catch (err) {
   failures += 1;

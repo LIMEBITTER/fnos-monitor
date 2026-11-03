@@ -83,6 +83,16 @@ export function createScheduler({ config, store, onUpdate, notify, logger = cons
     stop() {
       stopped = true;
       if (timer) clearTimeout(timer);
+      timer = null;
+    },
+    /** 设置页改探测间隔后立即生效：清掉旧定时器，按新间隔重新排。 */
+    setIntervalSeconds(seconds) {
+      const value = Math.max(10, Math.round(Number(seconds) || config.checkIntervalSeconds));
+      config.checkIntervalSeconds = value;
+      if (stopped) return value;
+      if (timer) clearTimeout(timer);
+      scheduleNext();
+      return value;
     },
     tick,
   };

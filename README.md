@@ -24,8 +24,9 @@
 - **实时更新**：SSE 推送，断线自动退回 15 秒轮询；页头有「实时 / 轮询」指示。
 - **界面**：深色 / 浅色切换（记住选择）、极光背景、入场与柱状动画、响应式；尊重 `prefers-reduced-motion`。
 - **可选 Basic Auth**：同时设置 `STATUS_USER` 与 `STATUS_PASSWORD` 才启用。
+- **网页设置**：页头的齿轮进入设置页，可改邮件告警、站点名称、探测间隔与管理员密码；保存后立即生效，不用登服务器改文件。
 - **默认公网脱敏**：页面不输出探测目标、错误详情、版本号与配置路径，事故原因里的 IP / 端口会替换成 `[内部地址]`；登录用户或 `EXPOSE_INTERNAL=true` 可见完整信息。
-- **邮件告警**：服务异常 / 恢复 / 长时间未恢复时发信；纯环境变量配置，零依赖 SMTP 客户端，未配置时静默禁用。
+- **邮件告警**：服务异常 / 恢复 / 长时间未恢复时发信；零依赖 SMTP 客户端，既可用设置页配置，也可用环境变量，未配置时静默禁用。
 - **易迁移**：无数据库、无原生模块、无外部 CDN；`node:http` 直接托管前端，运行时零 npm 依赖。
 - **自带体检**：`pnpm self-check` 立即探一轮并打印结果；`pnpm test` 跑脱敏、邮件与冒烟测试。
 
@@ -191,6 +192,33 @@ node scripts/send-test-mail.mjs     # 或 pnpm mail:test
 
 容器里执行则用 `docker compose exec fnos-monitor node scripts/send-test-mail.mjs`。
 
+### 网页设置
+
+页头右上角的齿轮是设置入口（也可以直接访问 `/settings`）。第一次使用需要先在服务器上初始化管理员：
+
+```bash
+node scripts/set-admin.mjs                        # 生成随机密码并打印
+node scripts/set-admin.mjs --user baiyu --password '你的密码'
+```
+
+容器里执行：
+
+```bash
+docker compose exec fnos-monitor node scripts/set-admin.mjs
+```
+
+之后在设置页登录，就能改这些内容，保存即生效、无需重启：
+
+| 分组 | 可改项 |
+| --- | --- |
+| 邮件告警 | SMTP 服务器 / 端口 / TLS、用户名与授权码、发件人、收件人、重复提醒间隔、状态页地址；页内可直接发测试邮件 |
+| 站点与探测 | 站点名称、描述、探测间隔（10–3600 秒） |
+| 管理员 | 修改密码、退出登录 |
+
+设置写在 `DATA_DIR/settings.json`（默认 `data/settings.json`，权限 600），它**优先于环境变量**：在页面上改过的项会覆盖 `.env` / `ALERT_*` 里的值。管理员密码用 scrypt 加盐哈希保存，登录使用 HttpOnly、SameSite=Strict 的会话 cookie（7 天有效）。如果设置了 `STATUS_USER` / `STATUS_PASSWORD`，这对环境变量优先且会锁住整站，页面里只能改站点与告警，不能改密码。
+
+> 迁移时记得连同 `data/settings.json` 一起备份——SMTP 授权码和管理员哈希都在里面。
+
 ## 部署
 
 ### systemd（fnOS 这类 Debian 系系统）
@@ -251,6 +279,13 @@ docker compose logs -f
 | `GET /api/status` | 当前快照：`site` / `overall` / `services` / `incidents` / `calendar` / `meta`；默认脱敏，`EXPOSE_INTERNAL=true` 或登录后返回完整视图 |
 | `GET /api/health` | 监控自身的健康检查；不鉴权，只含运行时长、服务数与最近探测时间 |
 | `GET /events` | SSE；连接建立时先推当前快照，之后每次采集完成推一帧 `event: status` |
+| `GET /api/session` | 当前登录状态与是否已初始化管理员（不鉴权） |
+| `POST /api/login` | 管理员登录，成功后写入 `fm_session` cookie |
+| `POST /api/logout` | 退出登录 |
+| `GET /api/settings` | 读取运行时设置（需管理员；未初始化管理员返回 409） |
+| `PUT /api/settings` | 保存运行时设置并立即生效（需管理员） |
+| `POST /api/settings/test-mail` | 用当前设置发一封测试邮件（需管理员） |
+| `POST /api/password` | 修改管理员密码（需管理员；环境变量提供密码时返回 409） |
 
 ## 目录结构
 
@@ -260,19 +295,22 @@ server/
   config.js      配置加载、校验与归一化
   checks.js      http/tcp 探针与 degraded 判定
   store.js       状态持久化、日聚合、事故开关
+  settings.js    运行时设置、管理员密码与会话签名
   scheduler.js   定时调度、并发控制与告警触发
   public-view.js 公网视图：剥离目标、错误详情与内部元信息
   alerts.js      告警编排：开事故 / 恢复 / 重复提醒
   mailer.js      零依赖 SMTP 客户端（LOGIN / PLAIN / STARTTLS）
 src/
   App.tsx        页面骨架
-  components/    Header / Hero / ServiceCard / Incidents / Calendar / Footer
+  components/    Header / Hero / ServiceCard / Incidents / Calendar / Footer / SettingsDialog
   lib/           SSE + 轮询、主题、数字动画、格式化
 scripts/
   self-check.mjs 部署前连通性自检
   smoke.mjs      API / SSE / 静态页冒烟测试
   test-public-view.mjs  脱敏规则自测
   test-mailer.mjs       假 SMTP 服务器的发信自测
+  test-settings.mjs     设置校验、密码哈希与会话签名自测
+  set-admin.mjs         初始化管理员账号（写入 settings.json）
 config/          services.example.json（真实配置不进仓库）
 data/            state.json（运行后生成，不进仓库）
 docs/            ISSUES.md、DEPLOY-FNOS.md 与截图
@@ -294,6 +332,7 @@ deploy/          systemd unit 模板
 - 邮件告警只支持 SMTP 的 LOGIN / PLAIN 认证（含 STARTTLS 与 465 直连），不支持 OAuth2；Gmail 需用「应用专用密码」。
 - 进程重启后不会为「重启前就已存在」的事故补发邮件，恢复时仍会发送。
 - 探测间隔最小 10 秒，避免把小型 NAS 和反代打满。
+- `settings.json` 里的 SMTP 授权码是明文（权限 600），与 `.env` 同等对待；备份或截图时注意别外泄。
 
 ## 问题与提交
 

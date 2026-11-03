@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useStatus, useTheme } from "./lib/hooks";
 import { Header } from "./components/Header";
 import { Hero } from "./components/Hero";
@@ -6,14 +6,28 @@ import { ServiceCard } from "./components/ServiceCard";
 import { Incidents } from "./components/Incidents";
 import { Calendar, Legend } from "./components/Calendar";
 import { Footer } from "./components/Footer";
+import { SettingsDialog } from "./components/SettingsDialog";
+
+const atSettingsPath = () => window.location.pathname.replace(/\/+$/, "") === "/settings";
 
 export default function App() {
   const { status, connected, error } = useStatus();
   const [theme, toggleTheme] = useTheme();
+  const [settingsOpen, setSettingsOpen] = useState(atSettingsPath);
 
   useEffect(() => {
     if (status) document.title = `${status.site.name} · 运行状态`;
   }, [status]);
+
+  const openSettings = () => {
+    setSettingsOpen(true);
+    if (!atSettingsPath()) window.history.replaceState(null, "", "/settings");
+  };
+
+  const closeSettings = () => {
+    setSettingsOpen(false);
+    if (atSettingsPath()) window.history.replaceState(null, "", "/");
+  };
 
   return (
     <div className="app">
@@ -34,6 +48,7 @@ export default function App() {
             theme={theme}
             publicView={status.meta.publicView}
             onToggleTheme={toggleTheme}
+            onOpenSettings={openSettings}
           />
 
           <main className="page">
@@ -63,6 +78,8 @@ export default function App() {
           <Footer meta={status.meta} site={status.site} />
         </>
       )}
+
+      <SettingsDialog open={settingsOpen} onClose={closeSettings} />
     </div>
   );
 }

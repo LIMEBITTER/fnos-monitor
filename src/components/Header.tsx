@@ -6,9 +6,10 @@ interface Props {
   theme: "dark" | "light";
   publicView?: boolean;
   onToggleTheme: () => void;
+  onOpenSettings: () => void;
 }
 
-export function Header({ site, connected, theme, publicView = false, onToggleTheme }: Props) {
+export function Header({ site, connected, theme, publicView = false, onToggleTheme, onOpenSettings }: Props) {
   return (
     <header className="topbar">
       <a className="brand" href="/" aria-label="回到首页">
@@ -47,12 +48,29 @@ export function Header({ site, connected, theme, publicView = false, onToggleThe
           <i aria-hidden="true" />
           {connected ? "实时" : "轮询"}
         </span>
+        <button className="icon-toggle" type="button" onClick={onOpenSettings} aria-label="设置" title="设置">
+          <GearIcon />
+        </button>
         <button className="theme-toggle" type="button" onClick={onToggleTheme} aria-label="切换深色/浅色模式">
           {theme === "dark" ? <SunIcon /> : <MoonIcon />}
           <span>{theme === "dark" ? "浅色" : "深色"}</span>
         </button>
       </div>
     </header>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M19.4 13.5a7.7 7.7 0 0 0 0-3l1.6-1.3-1.8-3.1-2 .7a7.6 7.6 0 0 0-2.6-1.5L14.2 3h-3.6l-.4 2.3a7.6 7.6 0 0 0-2.6 1.5l-2-.7L3.8 9.2 5.4 10.5a7.7 7.7 0 0 0 0 3l-1.6 1.3 1.8 3.1 2-.7a7.6 7.6 0 0 0 2.6 1.5l.4 2.3h3.6l.4-2.3a7.6 7.6 0 0 0 2.6-1.5l2 .7 1.8-3.1-1.6-1.3Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

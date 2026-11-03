@@ -94,9 +94,17 @@ curl -sk --resolve 'status.limebitter.online:57921:[::1]' \
 - 这台机器只有 IPv6 公网地址，`status.limebitter.online` 也只解析出 AAAA；纯 IPv4 网络打不开，与 `dsh.limebitter.online` 的情况一致。
 - 页面默认走公网视图：探测目标、状态码、错误详情、版本号都不下发，事故原因里的内网地址替换为 `[内部地址]`。本机排障想看完整信息时，在 compose 里设 `EXPOSE_INTERNAL=true`；或者启用 `STATUS_USER` / `STATUS_PASSWORD`，登录后自动看到完整视图。
 
-## 邮件告警
+## 邮件告警与网页设置
 
-在仓库目录新建 `.env`（已 gitignore），填 SMTP 信息后重建容器：
+推荐在网页里配置，改完立即生效，不用重启容器。先初始化管理员（只需一次）：
+
+```bash
+docker compose exec fnos-monitor node scripts/set-admin.mjs
+```
+
+命令会打印用户名与随机密码；打开状态页右上角的齿轮（或 `https://status.limebitter.online:57921/settings`），登录后填 SMTP 服务器、端口、授权码、收件人，点「发送测试邮件」确认能收到，再保存。设置写入 `data/settings.json`，**优先于 `.env` 里的 `ALERT_*`**；备份 `data/` 时记得把它一起带走（里面还有管理员密码哈希）。
+
+也可以继续用环境变量（适合用配置管理工具批量部署）。在仓库目录新建 `.env`（已 gitignore），填 SMTP 信息后重建容器：
 
 ```bash
 cd ~/apps/fnos-monitor

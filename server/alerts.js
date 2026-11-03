@@ -51,36 +51,49 @@ function formatTime(ts, timeZone) {
   }
 }
 
-export function readAlertSettings(defaultTimezone = "Asia/Shanghai") {
-  const host = process.env.ALERT_SMTP_HOST?.trim();
-  const recipients = String(process.env.ALERT_TO ?? "")
-    .split(/[,;\s]+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
+export function readAlertSettings(defaultTimezone = "Asia/Shanghai", overrides = {}) {
+  const o = overrides && typeof overrides === "object" ? overrides : {};
+  const pick = (value, fallback) => (value !== undefined && value !== null ? value : fallback);
+
+  const host = String(pick(o.host, process.env.ALERT_SMTP_HOST) ?? "").trim();
+  const recipients = parseRecipients(pick(o.to, process.env.ALERT_TO));
   if (!host || !recipients.length) return null;
 
-  const secure = /^(1|true|yes|on)$/i.test(process.env.ALERT_SMTP_SECURE ?? "");
-  const user = process.env.ALERT_SMTP_USER?.trim() ?? "";
-  const pass = process.env.ALERT_SMTP_PASS ?? "";
-  const from = process.env.ALERT_FROM?.trim() || user;
+  const secure = typeof o.secure === "boolean" ? o.secure : /^(1|true|yes|on)$/i.test(process.env.ALERT_SMTP_SECURE ?? "");
+  const user = String(pick(o.user, process.env.ALERT_SMTP_USER) ?? "").trim();
+  const pass = String(pick(o.pass, process.env.ALERT_SMTP_PASS) ?? "");
+  const from = String(pick(o.from, process.env.ALERT_FROM) ?? "").trim() || user;
   if (!from) return null;
+
+  const repeatMinutes =
+    o.repeatMinutes !== undefined ? Number(o.repeatMinutes) : Number(process.env.ALERT_REPEAT_MINUTES ?? 0);
 
   return {
     host,
-    port: Number(process.env.ALERT_SMTP_PORT ?? (secure ? 465 : 587)),
+    port: Number(pick(o.port, process.env.ALERT_SMTP_PORT) ?? (secure ? 465 : 587)),
     secure,
     user,
     pass,
     from,
     recipients,
-    repeatMs: Math.max(0, Number(process.env.ALERT_REPEAT_MINUTES ?? 0)) * 60000,
-    url: process.env.ALERT_URL?.trim() || "",
-    timezone: process.env.ALERT_TZ?.trim() || process.env.TZ || defaultTimezone,
+    repeatMs: Math.max(0, repeatMinutes) * 60000,
+    url: String(pick(o.url, process.env.ALERT_URL) ?? "").trim(),
+    timezone: String(pick(o.timezone, process.env.ALERT_TZ ?? process.env.TZ) ?? defaultTimezone),
   };
 }
 
-export function createAlerter({ siteName = "fnOS 状态页", timezone = "Asia/Shanghai", logger = console } = {}) {
-  const settings = readAlertSettings(timezone);
+function parseRecipients(value) {
+  const list = Array.isArray(value) ? value : String(value ?? "").split(/[,;\s]+/);
+  return [...new Set(list.map((item) => String(item).trim()).filter(Boolean))];
+}
+
+export function createAlerter({
+  siteName = "fnOS 状态页",
+  timezone = "Asia/Shanghai",
+  overrides = {},
+  logger = console,
+} = {}) {
+  const settings = readAlertSettings(timezone, overrides);
   if (!settings) {
     return {
       enabled: false,
@@ -192,4 +205,41 @@ export function createAlerter({ siteName = "fnOS 状态页", timezone = "Asia/Sh
       return chain;
     },
   };
+}
+
+/** 发一封测试信（设置页的「发送测试邮件」与 scripts/send-test-mail.mjs 共用）。 */
+export async function sendTestMail(settings, siteName = "fnOS 状态页") {
+  const now = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: settings.timezone,
+    dateStyle: "full",
+    timeStyle: "medium",
+  }).format(new Date());
+
+  const text = [
+    `这是来自「${siteName}」状态页的测试邮件。`,
+    "",
+    "收到它说明 SMTP 配置可用，服务异常时你会收到同类通知。",
+    `发送时间：${now}`,
+    `SMTP：${settings.host}:${settings.port}（${settings.secure ? "SSL/TLS" : "STARTTLS/明文"}）`,
+    `收件人：${settings.recipients.join(", ")}`,
+    settings.url ? `状态页：${settings.url}` : "",
+    "",
+    "由 fnos-monitor 自动发送，请勿直接回复。",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const started = Date.now();
+  await sendMail({
+    host: settings.host,
+    port: settings.port,
+    secure: settings.secure,
+    user: settings.user,
+    pass: settings.pass,
+    from: settings.from,
+    to: settings.recipients,
+    subject: `[测试] ${siteName} 邮件通知`,
+    text,
+  });
+  return { to: settings.recipients, elapsedMs: Date.now() - started };
 }
