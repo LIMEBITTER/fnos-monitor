@@ -1,0 +1,33 @@
+[Unit]
+Description=fnos-monitor 状态页
+Documentation=https://github.com/LIMEBITTER/fnos-monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 按实际用户与路径修改
+User=fnos
+Group=fnos
+WorkingDirectory=/opt/fnos-monitor
+Environment=NODE_ENV=production
+Environment=PORT=8787
+Environment=HOST=127.0.0.1
+Environment=TZ=Asia/Shanghai
+# 需要访问控制时再加：
+# Environment=STATUS_USER=admin
+# Environment=STATUS_PASSWORD=change-me
+ExecStart=/usr/bin/node server/index.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+
+# 基础加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/fnos-monitor/data
+
+[Install]
+WantedBy=multi-user.target

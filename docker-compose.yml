@@ -1,0 +1,17 @@
+services:
+  fnos-monitor:
+    build: .
+    image: fnos-monitor:0.1.0
+    container_name: fnos-monitor
+    restart: unless-stopped
+    ports:
+      # 只绑回环，由 Lucky / Nginx 反代对外；需要局域网直连时改成 "8787:8787"
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ./config:/app/config:ro
+      - ./data:/data
+    environment:
+      TZ: Asia/Shanghai
+      # 启用访问控制时取消注释（两者必须同时设置）
+      # STATUS_USER: admin
+      # STATUS_PASSWORD: change-me
